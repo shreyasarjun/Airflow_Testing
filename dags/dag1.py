@@ -1,15 +1,13 @@
-from airflow import DAG
 from airflow.providers.http.operators.http import HttpOperator
-from airflow.models import Variable
 from datetime import datetime
+from airflow.sdk import DAG
 
-
-API_ENDPOINT = Variable.get("sample_api_endpoint", default_var="posts/1")
+API_ENDPOINT = "{{ var.value.sample_api_endpoint}}"
 
 with DAG(
     dag_id="migration_dag_api_variable",
     start_date=datetime(2026, 3, 15),
-    schedule_interval="@daily",
+    schedule="@daily",
     catchup=False,
 ) as dag:
 
