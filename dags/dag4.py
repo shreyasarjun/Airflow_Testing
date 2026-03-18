@@ -1,13 +1,34 @@
 from datetime import datetime
-import subprocess
-from airflow.sdk import DAG
-from airflow.providers.standard.operators.python import PythonOperator
+import os
+import socket
+import platform
+from airflow import DAG
+from airflow.operators.python import PythonOperator
 
-def docker_ps():
-    result = subprocess.run(['docker', 'ps'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    print("Docker PS Output:\n" + result.stdout)
-    if result.stderr:
-        print("Docker PS Error:\n" + result.stderr)
+def log_execution_environment():
+    print("Execution Environment Information:")
+    print(f"Hostname: {socket.gethostname()}")
+    print(f"Platform: {platform.platform()}")
+    print(f"System: {platform.system()}")
+    print(f"Release: {platform.release()}")
+    print(f"Python Version: {platform.python_version()}")
+    print(f"Current Working Directory: {os.getcwd()}")
+    print(f"Environment Variables: {os.environ}")
+
+    # Try to detect if running inside Docker
+    try:
+        with open('/proc/1/cgroup', 'rt') as f:
+            cgroup_content = f.read()
+        if 'docker' in cgroup_content or 'containerd' in cgroup_content:
+            print("Likely running inside a Docker container.")
+            # Try to get container ID
+            for line in cgroup_content.splitlines():
+                if 'docker' in line or 'containerd' in line:
+                    print(f"Container cgroup line: {line}")
+        else:
+            print("Not running inside a Docker container (no docker/containerd in /proc/1/cgroup).")
+    except Exception as e:
+        print(f"Could not read /proc/1/cgroup: {e}")
 
 default_args = {
     'owner': 'airflow',
@@ -21,8 +42,8 @@ dag = DAG(
     catchup=False
 )
 
-docker_ps = PythonOperator(
-    task_id='docker_ps',
-    python_callable=docker_ps,
+log_env_task = PythonOperator(
+    task_id='log_execution_environment',
+    python_callable=log_execution_environment,
     dag=dag
 )
